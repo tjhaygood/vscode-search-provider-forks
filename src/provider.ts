@@ -11,7 +11,7 @@ interface VSStorage {
   };
 }
 
-export default class VSCodeSearchProvider<
+abstract class BaseVSCodeSearchProvider<
   T extends Extension & { _settings: Gio.Settings | null },
 > implements AppSearchProvider
 {
@@ -19,13 +19,20 @@ export default class VSCodeSearchProvider<
   extension: T;
   app: Shell.App | null = null;
   appInfo: Gio.DesktopAppInfo | undefined;
+  appDirs: string[] = [];
+  appIds: string[] = [];
 
   constructor(extension: T) {
     this.extension = extension;
+    this.setAppDirs();
+    this.setAppIds();
     this._findApp();
     this._loadWorkspaces();
     this.appInfo = this.app?.appInfo;
   }
+
+  abstract setAppDirs(): void;
+  abstract setAppIds(): void;
 
   _loadWorkspaces() {
     const codeConfig = this._getConfig();
@@ -55,20 +62,8 @@ export default class VSCodeSearchProvider<
       `${Glib.get_home_dir()}/.var/app`,
     ];
 
-    const appDirs = [
-      // XDG_CONFIG_DIRS
-      "Code",
-      "Code - Insiders",
-      "VSCodium",
-      "VSCodium - Insiders",
-
-      // Flatpak
-      "com.vscodium.codium/config/VSCodium",
-      "com.vscodium.codium-insiders/config/VSCodium - Insiders",
-    ];
-
     for (const configDir of configDirs) {
-      for (const appDir of appDirs) {
+      for (const appDir of this.appDirs) {
         const path = `${configDir}/${appDir}/User/globalStorage/storage.json`;
         if (!fileExists(path)) {
           continue;
@@ -84,18 +79,10 @@ export default class VSCodeSearchProvider<
   }
 
   _findApp() {
-    const ids = [
-      "code",
-      "code-insiders",
-      "code-oss",
-      "codium",
-      "codium-insiders",
-      "com.vscodium.codium",
-      "com.vscodium.codium-insiders",
-    ];
-
-    for (let i = 0; !this.app && i < ids.length; i++) {
-      this.app = Shell.AppSystem.get_default().lookup_app(ids[i] + ".desktop");
+    for (let i = 0; !this.app && i < this.appIds.length; i++) {
+      this.app = Shell.AppSystem.get_default().lookup_app(
+        this.appIds[i] + ".desktop",
+      );
     }
 
     if (!this.app) {
@@ -169,5 +156,46 @@ export default class VSCodeSearchProvider<
       description: this.workspaces[id].path,
       createIcon: (size: number) => this.app?.create_icon_texture(size),
     }));
+  }
+}
+
+export class VSCodeSearchProvider extends BaseVSCodeSearchProvider<
+  Extension & { _settings: Gio.Settings | null }
+> {
+  setAppDirs() {
+    this.appDirs = [
+      // XDG_CONFIG_DIRS
+      "Code",
+      "Code - Insiders",
+      "VSCodium",
+      "VSCodium - Insiders",
+      // Flatpak
+      "com.vscodium.codium/config/VSCodium",
+      "com.vscodium.codium-insiders/config/VSCodium - Insiders",
+    ];
+  }
+
+  setAppIds() {
+    this.appIds = [
+      "code",
+      "code-insiders",
+      "code-oss",
+      "codium",
+      "codium-insiders",
+      "com.vscodium.codium",
+      "com.vscodium.codium-insiders",
+    ];
+  }
+}
+
+export class CursorSearchProvider extends BaseVSCodeSearchProvider<
+  Extension & { _settings: Gio.Settings | null }
+> {
+  setAppDirs() {
+    this.appDirs = ["Cursor"];
+  }
+
+  setAppIds() {
+    this.appIds = ["Cursor"];
   }
 }
