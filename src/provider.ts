@@ -199,3 +199,15 @@ export class CursorSearchProvider extends BaseVSCodeSearchProvider<
     this.appIds = ["Cursor"];
   }
 }
+
+export class WindsurfSearchProvider extends BaseVSCodeSearchProvider<
+  Extension & { _settings: Gio.Settings | null }
+> {
+  setAppDirs() {
+    this.appDirs = ["Windsurf"];
+  }
+
+  setAppIds() {
+    this.appIds = ["windsurf"];
+  }
+}
